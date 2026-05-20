@@ -13,32 +13,31 @@ import {
   X,
   Package,
   CreditCard,
+  Clock,
 } from "lucide-react";
 import { useState } from "react";
 
 const NAVIGATION = {
-  common: [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  ],
+  common: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
   member: [
     { to: "/my-bookings", label: "My Bookings", icon: CalendarDays },
     { to: "/my-subscriptions", label: "Subscriptions", icon: Package },
   ],
   trainer: [
     { to: "/classes/manage", label: "Manage Classes", icon: ClipboardList },
+    { to: "/trainer-hours", label: "Trainer Hours", icon: Clock },
     { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   ],
   admin: [
     { to: "/classes/manage", label: "Manage Classes", icon: ClipboardList },
+    { to: "/trainer-hours", label: "Trainer Hours", icon: Clock },
     { to: "/packages", label: "Packages", icon: Package },
     { to: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { to: "/members", label: "Members", icon: Users },
     { to: "/trainers", label: "Trainers", icon: Award },
     { to: "/admin", label: "User Management", icon: Users },
   ],
-  bottom: [
-    { to: "/profile", label: "Profile", icon: UserCircle },
-  ],
+  bottom: [{ to: "/profile", label: "Profile", icon: UserCircle }],
 };
 
 function getNavItems(role) {
@@ -112,6 +111,7 @@ export default function Layout({ children }) {
               {item.label}
             </NavLink>
           ))}
+
           <button
             onClick={handleSignOut}
             className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-[0.8125rem] font-medium text-gray-400 hover:bg-sidebar-hover hover:text-white transition-colors"
@@ -128,7 +128,11 @@ export default function Layout({ children }) {
             className="rounded-lg p-2 text-text-secondary hover:bg-background lg:hidden"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {sidebarOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
 
           <div className="hidden lg:block" />
@@ -142,6 +146,7 @@ export default function Layout({ children }) {
                 {profile?.role}
               </p>
             </div>
+
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
               {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
             </div>

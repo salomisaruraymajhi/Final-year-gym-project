@@ -19,18 +19,31 @@ export default function Trainers() {
 
   async function fetchTrainers() {
     setLoading(true);
+
     try {
       const { data, error } = await supabase
         .from("trainers")
-        .select("*, profiles(full_name, email, phone), classes(count)")
+        .select(
+          "*, profiles(full_name, email, phone), classes(count), trainer_hours(hours)"
+        )
         .order("created_at", { ascending: false });
+
       if (error) throw error;
+
       setTrainers(data || []);
     } catch (err) {
       console.error("Failed to load trainers:", err);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function getTotalHours(trainer) {
+    return (trainer.trainer_hours || []).reduce(
+      (sum, row) => sum + Number(row.hours || 0),
+      0
+    );
   }
 
   function openEditModal(trainer) {
@@ -45,6 +58,7 @@ export default function Trainers() {
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
+
     try {
       const { error } = await supabase
         .from("trainers")
@@ -53,7 +67,9 @@ export default function Trainers() {
           bio: form.bio || null,
         })
         .eq("id", editingTrainer.id);
+
       if (error) throw error;
+
       setModalOpen(false);
       fetchTrainers();
     } catch (err) {
@@ -64,12 +80,13 @@ export default function Trainers() {
     }
   }
 
-  const filteredTrainers = trainers.filter((t) => {
+  const filteredTrainers = trainers.filter((trainer) => {
     const query = searchQuery.toLowerCase();
+
     return (
-      t.profiles?.full_name?.toLowerCase().includes(query) ||
-      t.profiles?.email?.toLowerCase().includes(query) ||
-      t.specialization?.toLowerCase().includes(query)
+      trainer.profiles?.full_name?.toLowerCase().includes(query) ||
+      trainer.profiles?.email?.toLowerCase().includes(query) ||
+      trainer.specialization?.toLowerCase().includes(query)
     );
   });
 
@@ -86,15 +103,18 @@ export default function Trainers() {
   return (
     <Layout>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold leading-tight text-text-primary">Trainers</h1>
+        <h1 className="text-2xl font-bold leading-tight text-text-primary">
+          Trainers
+        </h1>
         <p className="mt-2 text-sm text-text-secondary">
-          View and manage gym trainers
+          View trainers, assigned classes, and total logged working hours
         </p>
       </div>
 
       <div className="mb-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+
           <input
             type="text"
             value={searchQuery}
@@ -110,39 +130,67 @@ export default function Trainers() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-background">
               <tr>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Name</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Email</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Specialization</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Classes</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Joined</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Actions</th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Name
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Email
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Specialization
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Classes
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Total Hours
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Joined
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Actions
+                </th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-border">
               {filteredTrainers.map((trainer) => (
                 <tr key={trainer.id}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">
-                        {trainer.profiles?.full_name?.charAt(0)?.toUpperCase() || "?"}
+                        {trainer.profiles?.full_name
+                          ?.charAt(0)
+                          ?.toUpperCase() || "?"}
                       </div>
+
                       <span className="font-medium text-text-primary">
                         {trainer.profiles?.full_name || "—"}
                       </span>
                     </div>
                   </td>
+
                   <td className="px-6 py-4 text-text-secondary">
                     {trainer.profiles?.email}
                   </td>
+
                   <td className="px-6 py-4 text-text-secondary">
                     {trainer.specialization || "—"}
                   </td>
+
                   <td className="px-6 py-4 text-text-secondary">
                     {trainer.classes?.[0]?.count || 0}
                   </td>
+
+                  <td className="px-6 py-4 font-medium text-text-primary">
+                    {getTotalHours(trainer).toFixed(1)}
+                  </td>
+
                   <td className="px-6 py-4 text-text-secondary">
                     {new Date(trainer.created_at).toLocaleDateString()}
                   </td>
+
                   <td className="px-6 py-4">
                     <button
                       onClick={() => openEditModal(trainer)}
@@ -154,10 +202,16 @@ export default function Trainers() {
                   </td>
                 </tr>
               ))}
+
               {filteredTrainers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-text-muted">
-                    {searchQuery ? "No trainers match your search" : "No trainers found"}
+                  <td
+                    colSpan={7}
+                    className="px-6 py-10 text-center text-text-muted"
+                  >
+                    {searchQuery
+                      ? "No trainers match your search"
+                      : "No trainers found"}
                   </td>
                 </tr>
               )}
@@ -186,11 +240,15 @@ export default function Trainers() {
               <label className="block text-sm font-medium text-text-primary mb-2">
                 Specialization
               </label>
+
               <input
                 type="text"
                 value={form.specialization}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, specialization: e.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    specialization: e.target.value,
+                  }))
                 }
                 placeholder="e.g. Yoga, CrossFit, Cardio"
                 className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -201,6 +259,7 @@ export default function Trainers() {
               <label className="block text-sm font-medium text-text-primary mb-2">
                 Bio
               </label>
+
               <textarea
                 value={form.bio}
                 onChange={(e) =>
@@ -220,6 +279,7 @@ export default function Trainers() {
               >
                 Cancel
               </button>
+
               <button
                 type="submit"
                 disabled={submitting}
