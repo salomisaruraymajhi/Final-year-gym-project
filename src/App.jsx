@@ -9,6 +9,7 @@ import ManageClasses from "./pages/ManageClasses";
 import MyBookings from "./pages/MyBookings";
 import Members from "./pages/Members";
 import Trainers from "./pages/Trainers";
+import TrainerHours from "./pages/TrainerHours";
 import Profile from "./pages/Profile";
 import Unauthorized from "./pages/Unauthorized";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -70,6 +71,15 @@ export default function App() {
         element={
           <ProtectedRoute allowedRoles={["admin", "trainer"]}>
             <ManageClasses />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/trainer-hours"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "trainer"]}>
+            <TrainerHours />
           </ProtectedRoute>
         }
       />
