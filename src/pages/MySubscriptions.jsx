@@ -4,11 +4,12 @@ import { supabase } from "../supabaseClient";
 import Layout from "../components/Layout";
 import {
   Loader2,
-  Package,
   Clock,
   DollarSign,
   Dumbbell,
   Send,
+  CreditCard,
+  Receipt,
 } from "lucide-react";
 
 export default function MySubscriptions() {
@@ -21,6 +22,7 @@ export default function MySubscriptions() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+
     try {
       const { data: memberData } = await supabase
         .from("members")
@@ -39,7 +41,9 @@ export default function MySubscriptions() {
         memberData
           ? supabase
               .from("subscriptions")
-              .select("*, subscription_packages(name, duration_days, price, classes(title))")
+              .select(
+                "*, subscription_packages(name, duration_days, price, classes(title))"
+              )
               .eq("member_id", memberData.id)
               .order("requested_at", { ascending: false })
           : Promise.resolve({ data: [] }),
@@ -49,6 +53,7 @@ export default function MySubscriptions() {
       setMySubscriptions(subsRes.data || []);
     } catch (err) {
       console.error("Failed to load data:", err);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -60,13 +65,18 @@ export default function MySubscriptions() {
 
   async function handleRequest(packageId) {
     if (!memberRecord) return;
+
     setRequestingId(packageId);
+
     try {
       const { error } = await supabase.from("subscriptions").insert({
         member_id: memberRecord.id,
         package_id: packageId,
+        payment_status: "unpaid",
       });
+
       if (error) throw error;
+
       fetchData();
     } catch (err) {
       console.error("Request failed:", err);
@@ -92,6 +102,13 @@ export default function MySubscriptions() {
     rejected: "bg-red-50 text-red-700",
   };
 
+  const paymentStyles = {
+    unpaid: "bg-amber-50 text-amber-700",
+    paid: "bg-green-50 text-green-700",
+    failed: "bg-red-50 text-red-700",
+    refunded: "bg-blue-50 text-blue-700",
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -112,20 +129,24 @@ export default function MySubscriptions() {
     <Layout>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text-primary leading-tight">
-          Subscriptions
+          Membership Plans and Billing
         </h1>
+
         <p className="mt-2 text-sm text-text-secondary">
-          Browse packages and manage your subscriptions
+          Browse membership plans, request a subscription, and view billing
+          status
         </p>
       </div>
 
       <div className="mb-10">
         <h2 className="text-base font-semibold text-text-primary mb-5">
-          Available Packages
+          Available Membership Plans
         </h2>
+
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {packages.map((pkg) => {
             const alreadyRequested = pendingPackageIds.has(pkg.id);
+
             return (
               <div
                 key={pkg.id}
@@ -134,23 +155,28 @@ export default function MySubscriptions() {
                 <h3 className="font-semibold text-text-primary leading-snug">
                   {pkg.name}
                 </h3>
+
                 <p className="mt-2 text-sm text-text-secondary leading-relaxed line-clamp-2">
                   {pkg.description || "No description"}
                 </p>
+
                 <div className="mt-4 space-y-2 text-xs text-text-muted">
                   <p className="flex items-center gap-2">
                     <Dumbbell className="h-3.5 w-3.5 shrink-0" />
                     {pkg.classes?.title || "General"}
                   </p>
+
                   <p className="flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 shrink-0" />
                     {formatDuration(pkg.duration_days)}
                   </p>
+
                   <p className="flex items-center gap-2">
-                    <DollarSign className="h-3.5 w-3.5 shrink-0" />
-                    ${Number(pkg.price).toFixed(2)}
+                    <DollarSign className="h-3.5 w-3.5 shrink-0" />$
+                    {Number(pkg.price).toFixed(2)}
                   </p>
                 </div>
+
                 <button
                   onClick={() => handleRequest(pkg.id)}
                   disabled={alreadyRequested || requestingId === pkg.id}
@@ -166,20 +192,21 @@ export default function MySubscriptions() {
                       Requesting...
                     </>
                   ) : alreadyRequested ? (
-                    "Requested"
+                    "Already Requested"
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Request Subscription
+                      Request Plan
                     </>
                   )}
                 </button>
               </div>
             );
           })}
+
           {packages.length === 0 && (
             <p className="col-span-full py-10 text-center text-text-muted">
-              No subscription packages available right now
+              No membership plans are available right now
             </p>
           )}
         </div>
@@ -188,8 +215,9 @@ export default function MySubscriptions() {
       {mySubscriptions.length > 0 && (
         <div>
           <h2 className="text-base font-semibold text-text-primary mb-5">
-            My Subscriptions
+            My Membership and Billing Records
           </h2>
+
           <div className="rounded-xl border border-border bg-surface">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -205,25 +233,32 @@ export default function MySubscriptions() {
                       Price
                     </th>
                     <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                      Status
+                      Subscription
+                    </th>
+                    <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                      Billing
                     </th>
                     <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
                       Period
                     </th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-border">
                   {mySubscriptions.map((sub) => (
                     <tr key={sub.id}>
                       <td className="px-6 py-4 font-medium text-text-primary">
                         {sub.subscription_packages?.name}
                       </td>
+
                       <td className="px-6 py-4 text-text-secondary">
                         {sub.subscription_packages?.classes?.title || "—"}
                       </td>
+
                       <td className="px-6 py-4 text-text-secondary">
                         ${Number(sub.subscription_packages?.price || 0).toFixed(2)}
                       </td>
+
                       <td className="px-6 py-4">
                         <span
                           className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
@@ -233,11 +268,42 @@ export default function MySubscriptions() {
                           {sub.status}
                         </span>
                       </td>
+
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
+                              paymentStyles[sub.payment_status || "unpaid"] ||
+                              paymentStyles.unpaid
+                            }`}
+                          >
+                            {sub.payment_status === "paid" ? (
+                              <Receipt className="h-3 w-3" />
+                            ) : (
+                              <CreditCard className="h-3 w-3" />
+                            )}
+                            {sub.payment_status || "unpaid"}
+                          </span>
+
+                          {sub.payment_method && (
+                            <p className="text-xs text-text-muted capitalize">
+                              {sub.payment_method.replace("_", " ")}
+                            </p>
+                          )}
+
+                          {sub.payment_reference && (
+                            <p className="text-xs text-text-muted">
+                              Ref: {sub.payment_reference}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+
                       <td className="px-6 py-4 text-xs text-text-muted">
                         {sub.start_date && sub.end_date
                           ? `${sub.start_date} — ${sub.end_date}`
                           : sub.status === "pending"
-                            ? "Awaiting confirmation"
+                            ? "Awaiting payment confirmation"
                             : "—"}
                       </td>
                     </tr>
@@ -246,6 +312,7 @@ export default function MySubscriptions() {
               </table>
             </div>
           </div>
+
           {mySubscriptions.some((s) => s.notes && s.status === "rejected") && (
             <div className="mt-4 space-y-2">
               {mySubscriptions
